@@ -25,7 +25,6 @@ fixedpt_str(fixedpt A, char *str)
 	int ndec = 0, slen = 0;
 	char tmp[12] = {0};
 	uint64_t fr, ip;
-	char digit;
 	const uint64_t one = 1LL << 32;
 	const uint64_t mask = one - 1;
 
@@ -48,13 +47,12 @@ fixedpt_str(fixedpt A, char *str)
 	do {
 		fr = (fr & mask) * 10;
 
-		digit = '0' + (fr >> 32) % 10;
-		str[slen++] = digit;
+		str[slen++] = '0' + (fr >> 32) % 10;
 		ndec++;
 	} while (fr != 0);
 
-	if (ndec > 1 && digit == '0')
-		str[slen-1] = '\0'; /* cut of trailing 0 */
+	if (ndec > 1 && str[slen-1] == '0')
+		str[slen-1] = '\0'; /* cut off trailing 0 */
 	else
 		str[slen] = '\0';
 }
