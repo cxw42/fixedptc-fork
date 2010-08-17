@@ -1,19 +1,25 @@
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "fixedptc.h"
 
+
+
 void
 fixedpt_print(fixedpt A)
 {
-	printf("%d.%u\n", A.whole, A.fract);
+	char num[20];
+
+	fixedpt_str(A, num);
+	puts(num);
 }
 
 int main() {
 
 	fixedpt A, B, C;
 
-	A = fixedpt_fromint(2);
+	A = fixedpt_rconst(2.5);
 	B = fixedpt_fromint(3);
 
 	fixedpt_print(A);
@@ -31,6 +37,16 @@ int main() {
 	C = fixedpt_mul(A, B);
 	fixedpt_print(C);
 	puts("");
+
+	A = fixedpt_rconst(1);
+	B = fixedpt_rconst(4);
+	C = fixedpt_div(A, B);
+
+	fixedpt_print(A);
+	puts("/");
+	fixedpt_print(B);
+	puts("=");
+	fixedpt_print(C);
 
 	return (0);
 }

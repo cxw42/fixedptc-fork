@@ -2,60 +2,53 @@
 #define _FIXEDPTC_H_
 
 /*
- * Signed 64-bit fixed point number library. The numbers are
- * in the 32:32 format.
+ * Signed 32-bit fixed point number library for the 24.8 format.
+ * This means that the numbers cannot be larger than approximately
+ * 8 million or smaller than 1/256.
  */
 
-typedef union {
-	uint64_t		full;
-	struct {
-		int32_t		whole;
-		uint32_t	fract;
-	};
-} fixedpt;
+typedef int32_t fixedpt;
 
-//#define fixedpt_const(A,B) (uint64_t) (((int64_t)A << 32) + ((B + 1.1641532182693481e-10) * 4294967296LL))
-
-//#define FIXEDX_YCONST(A,B) (FULLSIZEINT)((A<<Y) + ((B + 1/(2^(Y+1)))*2^Y))
-#define fixedpt_const(A,B)    (uint64_t)((A<<31) + ((B + 1.1641532182693481e-10) * 4294967296LL))
+#define fixedpt_rconst(R) (R * (1LL << 8) + (R >= 0 ? 0.5 : -0.5))
+#define fixedpt_fromint(I) ((int64_t)I << 8)
+#define fixedpt_toint(F) (F >> 8)
+#define fixedpt_add(A,B) (A + B)
+#define fixedpt_sub(A,B) (A - B)
+#define fixedpt_mul(A,B) (int32_t)(((int64_t)A * (int64_t)B) >> 8)
+#define fixedpt_div(A,B) (int32_t)(((int64_t)A << 8) / B)
+#define fixedpt_fracpart(A) (A & 0xff)
 
 
-static inline fixedpt
-fixedpt_fromint(int32_t i)
+static void
+fixedpt_str(fixedpt A, char *str)
 {
-	fixedpt R;
+	int ndec = 0;
+	char digit[2] = {0, 0};
+	char tmp[10];
+	uint64_t fr;
+	const uint64_t one = 1LL << 32;
+	const uint64_t mask = one - 1;
 
-	R.whole = i;
-	R.fract = 0;
-	return R;
-}
+	*str = '\0';
+	if (A < 0) {
+		strcat(str, "-");
+		A *= -1;
+	}
 
-static inline fixedpt
-fixedpt_add(fixedpt A, fixedpt B)
-{
-	fixedpt R;
+	snprintf(tmp, sizeof(tmp), "%d.", fixedpt_toint(A));
+	strcat(str, tmp);
 
-	R.full = A.full + B.full;
-	return R;
-}
+	fr = (fixedpt_fracpart(A) << 24) & mask;
+	do {
+		fr = (fr & mask) * 10;
 
-static inline fixedpt
-fixedpt_sub(fixedpt A, fixedpt B)
-{
-	fixedpt R;
+		digit[0] = '0' + (fr >> 32) % 10;
+		strcat(str, digit);
+		ndec++;
+	} while (fr != 0);
 
-	R.full = A.full - B.full;
-	return R;
-}
-
-static inline fixedpt
-fixedpt_mul(fixedpt A, fixedpt B)
-{
-	fixedpt R;
-
-	R.whole = A.whole + B.whole + 1;
-	R.fract = A.fract + B.fract;
-	return R;
+	if (ndec > 1 && digit[0] == '0')
+		str[strlen(str)-1] = '\0'; /* cut of trailing 0 */
 }
 
 #endif
