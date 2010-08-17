@@ -19,6 +19,10 @@ int main() {
 
 	fixedpt A, B, C;
 
+	A = fixedpt_rconst(143.125);
+	fixedpt_print(A);
+	puts("");
+
 	A = fixedpt_rconst(2.5);
 	B = fixedpt_fromint(3);
 
