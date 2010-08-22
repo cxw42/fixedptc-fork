@@ -3,11 +3,14 @@
 
 /*
  * Signed 32-bit fixed point number library for the 24.8 format.
- * This means that the numbers cannot be larger than approximately
- * 8 million or smaller than 1/256. In practice, you should not count
+ * The specific limits are -8388608.999... to 8388607.999... and the
+ * most precise number is 0.00390625. In practice, you should not count
  * on working with numbers larger than a million or to the precision
  * of more than 2 decimal places. Make peace with the fact that PI
  * is 3.14 here. :)
+ *
+ * The ideas and algorithms have been cherry-picked from a large number
+ * of previous implementations available on the Internet.
  */
 
 /*-
@@ -53,12 +56,13 @@ typedef int32_t fixedpt;
 #define fixedpt_toint(F) (F >> FIXEDPT_FBITS)
 #define fixedpt_add(A,B) (A + B)
 #define fixedpt_sub(A,B) (A - B)
-#define fixedpt_mul(A,B) (int32_t)(((int64_t)A * (int64_t)B) >> FIXEDPT_FBITS)
-#define fixedpt_div(A,B) (int32_t)(((int64_t)A << FIXEDPT_FBITS) / B)
+#define fixedpt_xmul(A,B) (int32_t)(((int64_t)A * (int64_t)B) >> FIXEDPT_FBITS)
+#define fixedpt_xdiv(A,B) (int32_t)(((int64_t)A << FIXEDPT_FBITS) / (int64_t)B)
 #define fixedpt_fracpart(A) (A & FIXEDPT_FMASK)
 
-#define FIXEDPT_ONE	(1 << FIXEDPT_FBITS)
+#define FIXEDPT_ONE	(int32_t)(1 << FIXEDPT_FBITS)
 #define FIXEDPT_ONE_HALF (FIXEDPT_ONE >> 1)
+#define FIXEDPT_TWO	(FIXEDPT_ONE + FIXEDPT_ONE)
 #define FIXEDPT_PI	fixedpt_rconst(3.14159265)
 #define FIXEDPT_TWO_PI	fixedpt_rconst(2*3.14159265)
 #define FIXEDPT_HALF_PI fixedpt_rconst(3.14159265/2)
@@ -66,7 +70,20 @@ typedef int32_t fixedpt;
 
 #define fixedpt_abs(A) (A < 0 ? -A : A)
 
-static void
+static inline int32_t
+fixedpt_mul(fixedpt A, fixedpt B)
+{
+	return (((int64_t)A * (int64_t)B) >> FIXEDPT_FBITS);
+}
+
+
+static inline int32_t
+fixedpt_div(fixedpt A, fixedpt B)
+{
+	return (((int64_t)A << FIXEDPT_FBITS) / (int64_t)B);
+}
+
+static inline void
 fixedpt_str(fixedpt A, char *str)
 {
 	int ndec = 0, slen = 0;
@@ -104,6 +121,16 @@ fixedpt_str(fixedpt A, char *str)
 		str[slen] = '\0';
 }
 
+
+static inline char*
+fixedpt_cstr(fixedpt A)
+{
+	static char str[20];
+
+	fixedpt_str(A, str);
+	return (str);
+}
+
 static inline fixedpt
 fixedpt_sqrt(fixedpt A)
 {
@@ -138,45 +165,153 @@ fixedpt_sqrt(fixedpt A)
 	return (l);
 }
 
+
+/** The loss of precision is extraordinary! */
 static inline fixedpt
-fixedpt_sin(fixedpt A)
+fixedpt_sin(fixedpt fp)
 {
-	int s;
-	fixedpt Asq, a, b, c, d, sine;
-	const int INTERNAL_BITS = 24;
+	int sign = 1;
+	int32_t sqr, result;
+	const int sk[2] = { 16342350, 356589659 };
+	static int SK[2] = { 0, 0 };
 
-	if (A == 0)
-		return (0);
+	if (SK[0] == 0) {
+		int i;
+		for (i = 0; i < 2; i++)
+			SK[i] = sk[i] >> (31 - FIXEDPT_FBITS);
+	}
 
-	s = A / FIXEDPT_TWO_PI;
-	if (fixedpt_abs(s) >= (1 << 6)) 
-		A -= s * FIXEDPT_TWO_PI + (s >> 6) * -11;
-	else
-		A -= s * FIXEDPT_TWO_PI;
-	
-	if (A > FIXEDPT_PI)
-		A -= FIXEDPT_TWO_PI;
-	else if (A < -FIXEDPT_PI)
-		A += FIXEDPT_TWO_PI;
-
-	if (A > FIXEDPT_HALF_PI)
-		A = FIXEDPT_PI - A;
-	else if (A < -FIXEDPT_HALF_PI)
-		A = -FIXEDPT_PI - A;
-
-	if (A == 0)
-		return (0);
-
-	printf("A=%d, half_pi=%d\n", A, FIXEDPT_HALF_PI);
-	/* Maclaurin power series */
-	Asq = fixedpt_mul(A, A);
-	d = fixedpt_mul((1 << INTERNAL_BITS) / (2*3*4*5*6*7*8*9), Asq);
-	c = fixedpt_mul(d - (1 << INTERNAL_BITS) / (2*3*4*5*6*7), Asq);
-	b = fixedpt_mul(c + (1 << INTERNAL_BITS) / (2*3*4*5), Asq);
-	a = fixedpt_mul(b - (1 << INTERNAL_BITS) / (2*3), Asq);
-	sine = fixedpt_mul(a + (1 << INTERNAL_BITS), A);
-	return sine >> (INTERNAL_BITS - FIXEDPT_FBITS);
+	fp %= 2 * FIXEDPT_PI;
+	if (fp < 0)
+		fp = FIXEDPT_PI * 2 + fp;
+	if ((fp > FIXEDPT_HALF_PI) && (fp <= FIXEDPT_PI)) 
+		fp = FIXEDPT_PI - fp;
+	else if ((fp > FIXEDPT_PI) && (fp <= (FIXEDPT_PI + FIXEDPT_HALF_PI))) {
+		fp = fp - FIXEDPT_PI;
+		sign = -1;
+	} else if (fp > (FIXEDPT_PI + FIXEDPT_HALF_PI)) {
+		fp = (FIXEDPT_PI << 1) - fp;
+		sign = -1;
+	}
+	sqr = fixedpt_mul(fp, fp);
+	result = SK[0];
+	result = fixedpt_mul(result, sqr);
+	result -= SK[1];
+	result = fixedpt_mul(result, sqr);
+	result += FIXEDPT_ONE;
+	result = fixedpt_mul(result, fp);
+	return sign * result;
 }
 
+
+static inline fixedpt
+fixedpt_cos(fixedpt A)
+{
+	return (fixedpt_sin(FIXEDPT_HALF_PI - A));
+}
+
+static inline fixedpt
+fixedpt_tan(fixedpt A)
+{
+	return fixedpt_div(fixedpt_sin(A), fixedpt_cos(A));
+}
+
+static inline fixedpt
+fixedpt_exp(fixedpt fp)
+{
+	int32_t xabs, k, z, R, xp;
+	const int ln2 = 744261117; //0.69314718055994530941723212145818 * 2^30
+	const int ln2_inv = 1549082004; //1.4426950408889634073599246810019
+	const int exp_p[5] = { 357913941, -5965232, 142029, -3550, 88 };
+	static int LN2 = 0;
+	static int LN2_INV = 0;
+	static int EXP_P[5] = { 0, 0, 0, 0, 0 };
+
+	if (LN2 == 0)
+		LN2 = ln2 >> (30 - FIXEDPT_FBITS);
+	if (LN2_INV == 0)
+		LN2_INV = ln2_inv >> (30 - FIXEDPT_FBITS);
+	if (EXP_P[0] == 0) {
+		int i;
+		for (i = 0; i < 5; i++)
+			EXP_P[i] = exp_p[i] >> (31 - FIXEDPT_FBITS);
+	}
+
+	if (fp == 0)
+		return (FIXEDPT_ONE);
+	xabs = fixedpt_abs(fp);
+	k = fixedpt_mul(xabs, LN2_INV);
+	k += FIXEDPT_ONE_HALF;
+	k &= ~FIXEDPT_FMASK;
+	if (fp < 0)
+		k = -k;
+	fp -= fixedpt_mul(k, LN2);
+	z = fixedpt_mul(fp, fp);
+	R = FIXEDPT_TWO + fixedpt_mul(z, EXP_P[0] + fixedpt_mul(z, EXP_P[1] +
+	    fixedpt_mul(z, EXP_P[2] + fixedpt_mul(z, EXP_P[3] +
+	    fixedpt_mul(z, EXP_P[4])))));
+	xp = FIXEDPT_ONE + fixedpt_div(fixedpt_mul(fp, FIXEDPT_TWO), R - fp);
+	if (k < 0)
+		k = FIXEDPT_ONE >> (-k >> FIXEDPT_FBITS);
+	else
+		k = FIXEDPT_ONE << (k >> FIXEDPT_FBITS);
+	return (fixedpt_mul(k, xp));
+}
+
+static inline fixedpt
+fixedpt_ln(fixedpt x)
+{
+	fixedpt log2, xi;
+	fixedpt f, s, z, w, R;
+	const int ln2 = 744261117; //0.69314718055994530941723212145818 * 2^30
+	const int lg[7] = { 1431655765,	858993459, 613566760, 477218077, 390489238, 328862160, 317788895 };
+	static int LN2 = 0;
+	static int LG[7] = { 0, 0, 0, 0, 0, 0, 0 };
+
+	if (LN2 == 0)
+		LN2 = ln2 >> (30 - FIXEDPT_FBITS);
+	if (LG[0] == 0) {
+		int i;
+		for (i = 0; i < 7; i++)
+			LG[i] = lg[i] >> (31 - FIXEDPT_FBITS);
+	}
+
+	if (x < 0)
+		return (0);
+	if (x == 0)
+		return 0xffffffff;
+
+	log2 = 0;
+	xi = x;
+	while (xi > FIXEDPT_TWO) {
+		xi >>= 1;
+		log2++;
+	}
+	f = xi - FIXEDPT_ONE;
+	s = fixedpt_div(f, FIXEDPT_TWO + f);
+	z = fixedpt_mul(s, s);
+	w = fixedpt_mul(z, z);
+	R = fixedpt_mul(w, LG[1] + fixedpt_mul(w, LG[3] + fixedpt_mul(w, LG[5])))
+	    + fixedpt_mul(z, LG[0] + fixedpt_mul(w, LG[2] + fixedpt_mul(w, LG[4] +
+	    fixedpt_mul(w, LG[6]))));
+	return (fixedpt_mul(LN2, (log2 << FIXEDPT_FBITS)) + f - fixedpt_mul(s, f - R));
+}
+	
+
+static inline fixedpt
+fixedpt_log(fixedpt x, fixedpt base)
+{
+	return (fixedpt_div(fixedpt_ln(x), fixedpt_ln(base)));
+}
+
+static inline fixedpt
+fixedpt_pow(fixedpt n, fixedpt exp)
+{
+	if (exp == 0)
+		return (FIXEDPT_ONE);
+	if (n < 0)
+		return 0;
+	return (fixedpt_exp(fixedpt_mul(fixedpt_ln(n), exp)));
+}
 
 #endif
