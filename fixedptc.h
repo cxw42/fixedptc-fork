@@ -9,6 +9,12 @@
  * of more than 2 decimal places. Make peace with the fact that PI
  * is 3.14 here. :)
  *
+ * Since the precision is relatively low, many complex functions (more
+ * complex than div & mul) have a large hit on precision of the end result
+ * because the errors in precision accumulate.
+ * This loss of precision can be lessened by increasing the number of
+ * bits dedicated to the fraction part, but at the loss of range.
+ *
  * The ideas and algorithms have been cherry-picked from a large number
  * of previous implementations available on the Internet.
  */
