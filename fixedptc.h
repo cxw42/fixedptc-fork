@@ -74,8 +74,10 @@ typedef int32_t fixedpt;
 #define FIXEDPT_HALF_PI fixedpt_rconst(3.14159265/2)
 #define FIXEDPT_E	fixedpt_rconst(2.71828183)
 
-#define fixedpt_abs(A) (A < 0 ? -A : A)
+#define fixedpt_abs(A) ((A) < 0 ? -(A) : (A))
 
+
+/* Multiplies two fixedpt numbers, returns the result. */
 static inline int32_t
 fixedpt_mul(fixedpt A, fixedpt B)
 {
@@ -83,12 +85,15 @@ fixedpt_mul(fixedpt A, fixedpt B)
 }
 
 
+/* Divides two fixedpt numbers, returns the result. */
 static inline int32_t
 fixedpt_div(fixedpt A, fixedpt B)
 {
 	return (((int64_t)A << FIXEDPT_FBITS) / (int64_t)B);
 }
 
+
+/* Convert the given fixedpt number to a decimal string */
 static inline void
 fixedpt_str(fixedpt A, char *str)
 {
@@ -128,6 +133,8 @@ fixedpt_str(fixedpt A, char *str)
 }
 
 
+/* Converts the given fixedpt number into a static (non-threadsafe) string
+ * buffer */
 static inline char*
 fixedpt_cstr(fixedpt A)
 {
@@ -137,6 +144,8 @@ fixedpt_cstr(fixedpt A)
 	return (str);
 }
 
+
+/* Returns the square root of the given number, or -1 in case of error */
 static inline fixedpt
 fixedpt_sqrt(fixedpt A)
 {
@@ -172,7 +181,8 @@ fixedpt_sqrt(fixedpt A)
 }
 
 
-/** The loss of precision is extraordinary! */
+/* Returns the sine of the given fixedpt number. 
+ * Note: the loss of precision is extraordinary! */
 static inline fixedpt
 fixedpt_sin(fixedpt fp)
 {
@@ -210,18 +220,23 @@ fixedpt_sin(fixedpt fp)
 }
 
 
+/* Returns the cosine of the given fixedpt number */
 static inline fixedpt
 fixedpt_cos(fixedpt A)
 {
 	return (fixedpt_sin(FIXEDPT_HALF_PI - A));
 }
 
+
+/* Returns the tangens of the given fixedpt number */
 static inline fixedpt
 fixedpt_tan(fixedpt A)
 {
 	return fixedpt_div(fixedpt_sin(A), fixedpt_cos(A));
 }
 
+
+/* Returns the value exp(x), i.e. e^x of the given fixedpt number. */
 static inline fixedpt
 fixedpt_exp(fixedpt fp)
 {
@@ -264,6 +279,8 @@ fixedpt_exp(fixedpt fp)
 	return (fixedpt_mul(k, xp));
 }
 
+
+/* Returns the natural logarithm of the given fixedpt number. */
 static inline fixedpt
 fixedpt_ln(fixedpt x)
 {
@@ -304,12 +321,15 @@ fixedpt_ln(fixedpt x)
 }
 	
 
+/* Returns the logarithm of the given base of the given fixedpt number */
 static inline fixedpt
 fixedpt_log(fixedpt x, fixedpt base)
 {
 	return (fixedpt_div(fixedpt_ln(x), fixedpt_ln(base)));
 }
 
+
+/* Return the power (x^y) of the given fixedpt numbers */
 static inline fixedpt
 fixedpt_pow(fixedpt n, fixedpt exp)
 {
