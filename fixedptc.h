@@ -10,8 +10,8 @@
  * is 3.14 here. :)
  *
  * Since the precision is relatively low, many complex functions (more
- * complex than div & mul) have a large hit on precision of the end result
- * because the errors in precision accumulate.
+ * complex than div & mul) take a large hit on the precision of the
+ * end result, because errors in precision accumulate.
  * This loss of precision can be lessened by increasing the number of
  * bits dedicated to the fraction part, but at the loss of range.
  *
@@ -48,7 +48,14 @@ typedef int32_t fixedpt;
 
 /* Actually, you can redefine the FIXEDPT_WBITS constant to support other
  * divisions of the 32-bit integer, but who wants to work with 16-bit integers
- * these days? :) */
+ * these days? :)
+ *
+ * However, extending the base type to 64-bit would require approximately the
+ * same work as rewriting this library from scratch: such implementation would
+ * have to deal manually with overflows (there is no 128-bit data type in C),
+ * and the magic numbers (there are a lot of them!) would have to be
+ * recalculated for 64-bit operations.
+ */
 
 #define FIXEDPT_BITS	32
 #ifndef FIXEDPT_WBITS
@@ -71,7 +78,7 @@ typedef int32_t fixedpt;
 #define FIXEDPT_TWO	(FIXEDPT_ONE + FIXEDPT_ONE)
 #define FIXEDPT_PI	fixedpt_rconst(3.14159265)
 #define FIXEDPT_TWO_PI	fixedpt_rconst(2*3.14159265)
-#define FIXEDPT_HALF_PI fixedpt_rconst(3.14159265/2)
+#define FIXEDPT_HALF_PI	fixedpt_rconst(3.14159265/2)
 #define FIXEDPT_E	fixedpt_rconst(2.71828183)
 
 #define fixedpt_abs(A) ((A) < 0 ? -(A) : (A))
@@ -92,6 +99,10 @@ fixedpt_div(fixedpt A, fixedpt B)
 	return (((int64_t)A << FIXEDPT_FBITS) / (int64_t)B);
 }
 
+/*
+ * Note: adding and substracting fixedpt numbers can be done by using
+ * the regular integer operators + and -.
+ */
 
 /* Convert the given fixedpt number to a decimal string */
 static inline void
@@ -133,8 +144,8 @@ fixedpt_str(fixedpt A, char *str)
 }
 
 
-/* Converts the given fixedpt number into a static (non-threadsafe) string
- * buffer */
+/* Converts the given fixedpt number into a string, using a static
+ * (non-threadsafe) string buffer */
 static inline char*
 fixedpt_cstr(fixedpt A)
 {
@@ -268,7 +279,9 @@ fixedpt_exp(fixedpt fp)
 		k = -k;
 	fp -= fixedpt_mul(k, LN2);
 	z = fixedpt_mul(fp, fp);
-	R = FIXEDPT_TWO + fixedpt_mul(z, EXP_P[0] + fixedpt_mul(z, EXP_P[1] +
+	/* Taylor */
+	R = FIXEDPT_TWO +
+	    fixedpt_mul(z, EXP_P[0] + fixedpt_mul(z, EXP_P[1] +
 	    fixedpt_mul(z, EXP_P[2] + fixedpt_mul(z, EXP_P[3] +
 	    fixedpt_mul(z, EXP_P[4])))));
 	xp = FIXEDPT_ONE + fixedpt_div(fixedpt_mul(fp, FIXEDPT_TWO), R - fp);
@@ -329,7 +342,7 @@ fixedpt_log(fixedpt x, fixedpt base)
 }
 
 
-/* Return the power (x^y) of the given fixedpt numbers */
+/* Return the power value (n^exp) of the given fixedpt numbers */
 static inline fixedpt
 fixedpt_pow(fixedpt n, fixedpt exp)
 {
