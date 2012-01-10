@@ -15,6 +15,11 @@
  * This loss of precision can be lessened by increasing the number of
  * bits dedicated to the fraction part, but at the loss of range.
  *
+ * Adventurous users might utilize this library to build two data types:
+ * one which has the range, and one which has the precision, and carefully
+ * convert between them (including adding two number of each type to produce
+ * a simulated type with a larger range and precision).
+ *
  * The ideas and algorithms have been cherry-picked from a large number
  * of previous implementations available on the Internet.
  */
