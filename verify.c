@@ -6,6 +6,9 @@
 
 #include "fixedptc.h"
 
+/* This test program verifies the fixedpt precision, comparing it to
+ * float and double precision results. */
+
 static const float pi_f = 3.14159265358979323846264338;
 static const double pi_d = 3.14159265358979323846264338;
 static const fixedpt pi_x = fixedpt_rconst(3.14159265358979323846264338);

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 
+/* This is a pure integer-only test program for fixedptc */
 
 //#define FIXEDPT_WBITS 16
 
