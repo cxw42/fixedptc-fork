@@ -2,16 +2,18 @@
 #define _FIXEDPTC_H_
 
 /*
- * Signed 32-bit fixed point number library for the 24.8 format.
- * The specific limits are -8388608.999... to 8388607.999... and the
- * most precise number is 0.00390625. In practice, you should not count
- * on working with numbers larger than a million or to the precision
- * of more than 2 decimal places. Make peace with the fact that PI
- * is 3.14 here. :)
+ * fixedptc.h is a 32-bit or 64-bit fixed point numeric library.
  *
- * Since the precision is relatively low, many complex functions (more
- * complex than div & mul) take a large hit on the precision of the
- * end result, because errors in precision accumulate.
+ * The symbol FIXEDPT_BITS, if defined before this library header file
+ * is included, governs the number of bits in the data type (its "width").
+ * The default width is 32-bit (FIXEDPT_BITS=32) and it can be used
+ * on any recent C99 compiler. The 64-bit precision (FIXEDPT_BITS=64) is
+ * available on compilers which implement 128-bit "long long" types. This
+ * precision has been tested on GCC 4.2+.
+ *
+ * Since the precision in both cases is relatively low, many complex
+ * functions (more complex than div & mul) take a large hit on the precision
+ * of the end result because errors in precision accumulate.
  * This loss of precision can be lessened by increasing the number of
  * bits dedicated to the fraction part, but at the loss of range.
  *
@@ -22,6 +24,15 @@
  *
  * The ideas and algorithms have been cherry-picked from a large number
  * of previous implementations available on the Internet.
+ * Tim Hartrick has contributed cleanup and 64-bit support patches.
+ *
+ * == Special notes for the 32-bit precision ==
+ * Signed 32-bit fixed point numeric library for the 24.8 format.
+ * The specific limits are -8388608.999... to 8388607.999... and the
+ * most precise number is 0.00390625. In practice, you should not count
+ * on working with numbers larger than a million or to the precision
+ * of more than 2 decimal places. Make peace with the fact that PI
+ * is 3.14 here. :)
  */
 
 /*-
