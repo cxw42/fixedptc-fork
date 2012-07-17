@@ -72,6 +72,9 @@ int
 main() 
 {
 	setlocale(LC_NUMERIC, "C");
+	printf("fixedptc library version: %s\n", FIXEDPT_VCSID);
+	printf("Using %d-bit precision, %d.%d format\n\n", FIXEDPT_BITS, FIXEDPT_WBITS, FIXEDPT_FBITS);
+
 	verify_numbers();
 	printf("\n");
 	verify_trig();

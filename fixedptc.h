@@ -66,19 +66,15 @@
 #endif
 
 #if FIXEDPT_BITS == 32
-
 typedef int32_t fixedpt;
 typedef	int64_t	fixedptd;
 typedef	uint32_t fixedptu;
 typedef	uint64_t fixedptud;
-
 #elif FIXEDPT_BITS == 64
-
 typedef int64_t fixedpt;
 typedef	__int128_t fixedptd;
 typedef	uint64_t fixedptu;
 typedef	__uint128_t fixedptud;
-
 #else
 #error "FIXEDPT_BITS must be equal to 32 or 64"
 #endif
@@ -90,6 +86,8 @@ typedef	__uint128_t fixedptud;
 #if FIXEDPT_WBITS >= FIXEDPT_BITS
 #error "FIXEDPT_WBITS must be less than or equal to FIXEDPT_BITS"
 #endif
+
+#define FIXEDPT_VCSID "$Id$"
 
 #define FIXEDPT_FBITS	(FIXEDPT_BITS - FIXEDPT_WBITS)
 #define FIXEDPT_FMASK	(((fixedpt)1 << FIXEDPT_FBITS) - 1)
