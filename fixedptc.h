@@ -11,6 +11,13 @@
  * available on compilers which implement 128-bit "long long" types. This
  * precision has been tested on GCC 4.2+.
  *
+ * The FIXEDPT_WBITS symbols governs how many bits are dedicated to the
+ * "whole" part of the number (to the left of the decimal point). The larger
+ * this width is, the larger the numbers which can be stored in the fixedpt
+ * number. The rest of the bits (available calculated in the FIXEDPT_FBITS
+ * symbol) are dedicated to the fraction part of the number (to the right
+ * of the decimal point).
+ *
  * Since the precision in both cases is relatively low, many complex
  * functions (more complex than div & mul) take a large hit on the precision
  * of the end result because errors in precision accumulate.
