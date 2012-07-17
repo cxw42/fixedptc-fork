@@ -1,5 +1,5 @@
-fixedptc library - a simple 24.8 fixed point math header library for C.
-Copyright (c) 2010. Ivan Voras <ivoras@freebsd.org>
+fixedptc library - a simple fixed point math header library for C.
+Copyright (c) 2010-2012. Ivan Voras <ivoras@freebsd.org>
 Released under the BSDL.
 
 fixedptc is intended to be simple to use and integrate in other simple
