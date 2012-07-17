@@ -13,7 +13,7 @@ fixedpt_print(fixedpt A)
 {
 	char num[20];
 
-	fixedpt_str(A, num);
+	fixedpt_str(A, num, -2);
 	puts(num);
 }
 

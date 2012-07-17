@@ -25,7 +25,8 @@
  */
 
 /*-
- * Copyright (c) 2010 Ivan Voras <ivoras@freebsd.org>
+ * Copyright (c) 2010-2012 Ivan Voras <ivoras@freebsd.org>
+ * Copyright (c) 2012 Tim Hartrick <tim@edgecast.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -49,59 +50,75 @@
  * SUCH DAMAGE.
  */
 
-typedef int32_t fixedpt;
-
-/* Actually, you can redefine the FIXEDPT_WBITS constant to support other
- * divisions of the 32-bit integer, but who wants to work with 16-bit integers
- * these days? :)
- *
- * However, extending the base type to 64-bit would require approximately the
- * same work as rewriting this library from scratch: such implementation would
- * have to deal manually with overflows (there is no 128-bit data type in C),
- * and the magic numbers (there are a lot of them!) would have to be
- * recalculated for 64-bit operations.
- */
-
+#ifndef FIXEDPT_BITS
 #define FIXEDPT_BITS	32
+#endif
+
+#if FIXEDPT_BITS == 32
+
+typedef int32_t fixedpt;
+typedef	int64_t	fixedptd;
+typedef	uint32_t fixedptu;
+typedef	uint64_t fixedptud;
+
+#elif FIXEDPT_BITS == 64
+
+typedef int64_t fixedpt;
+typedef	__int128_t fixedptd;
+typedef	uint64_t fixedptu;
+typedef	__uint128_t fixedptud;
+
+#else
+#error "FIXEDPT_BITS must be equal to 32 or 64"
+#endif
+
 #ifndef FIXEDPT_WBITS
 #define FIXEDPT_WBITS	24
 #endif
+
+#if FIXEDPT_WBITS >= FIXEDPT_BITS
+#error "FIXEDPT_WBITS must be less than or equal to FIXEDPT_BITS"
+#endif
+
 #define FIXEDPT_FBITS	(FIXEDPT_BITS - FIXEDPT_WBITS)
-#define FIXEDPT_FMASK	((1 << FIXEDPT_FBITS) - 1)
+#define FIXEDPT_FMASK	(((fixedpt)1 << FIXEDPT_FBITS) - 1)
 
-#define fixedpt_rconst(R) (int32_t)(R * (1LL << FIXEDPT_FBITS) + (R >= 0 ? 0.5 : -0.5))
-#define fixedpt_fromint(I) ((int64_t)I << FIXEDPT_FBITS)
-#define fixedpt_toint(F) (F >> FIXEDPT_FBITS)
-#define fixedpt_add(A,B) (A + B)
-#define fixedpt_sub(A,B) (A - B)
-#define fixedpt_xmul(A,B) (int32_t)(((int64_t)A * (int64_t)B) >> FIXEDPT_FBITS)
-#define fixedpt_xdiv(A,B) (int32_t)(((int64_t)A << FIXEDPT_FBITS) / (int64_t)B)
-#define fixedpt_fracpart(A) (A & FIXEDPT_FMASK)
+#define fixedpt_rconst(R) ((fixedpt)((R) * (((fixedptd)1 << FIXEDPT_FBITS) \
+	+ ((R) >= 0 ? 0.5 : -0.5))))
+#define fixedpt_fromint(I) ((fixedptd)(I) << FIXEDPT_FBITS)
+#define fixedpt_toint(F) ((F) >> FIXEDPT_FBITS)
+#define fixedpt_add(A,B) ((A) + (B))
+#define fixedpt_sub(A,B) ((A) - (B))
+#define fixedpt_xmul(A,B)						\
+	((fixedpt)(((fixedptd)(A) * (fixedptd)(B)) >> FIXEDPT_FBITS))
+#define fixedpt_xdiv(A,B)						\
+	((fixedpt)(((fixedptd)(A) << FIXEDPT_FBITS) / (fixedptd)(B)))
+#define fixedpt_fracpart(A) ((fixedpt)(A) & FIXEDPT_FMASK)
 
-#define FIXEDPT_ONE	(int32_t)(1 << FIXEDPT_FBITS)
+#define FIXEDPT_ONE	((fixedpt)((fixedpt)1 << FIXEDPT_FBITS))
 #define FIXEDPT_ONE_HALF (FIXEDPT_ONE >> 1)
 #define FIXEDPT_TWO	(FIXEDPT_ONE + FIXEDPT_ONE)
-#define FIXEDPT_PI	fixedpt_rconst(3.14159265)
-#define FIXEDPT_TWO_PI	fixedpt_rconst(2*3.14159265)
-#define FIXEDPT_HALF_PI	fixedpt_rconst(3.14159265/2)
-#define FIXEDPT_E	fixedpt_rconst(2.71828183)
+#define FIXEDPT_PI	fixedpt_rconst(3.14159265358979323846)
+#define FIXEDPT_TWO_PI	fixedpt_rconst(2 * 3.14159265358979323846)
+#define FIXEDPT_HALF_PI	fixedpt_rconst(3.14159265358979323846 / 2)
+#define FIXEDPT_E	fixedpt_rconst(2.7182818284590452354)
 
 #define fixedpt_abs(A) ((A) < 0 ? -(A) : (A))
 
 
 /* Multiplies two fixedpt numbers, returns the result. */
-static inline int32_t
+static inline fixedpt
 fixedpt_mul(fixedpt A, fixedpt B)
 {
-	return (((int64_t)A * (int64_t)B) >> FIXEDPT_FBITS);
+	return (((fixedptd)A * (fixedptd)B) >> FIXEDPT_FBITS);
 }
 
 
 /* Divides two fixedpt numbers, returns the result. */
-static inline int32_t
+static inline fixedpt
 fixedpt_div(fixedpt A, fixedpt B)
 {
-	return (((int64_t)A << FIXEDPT_FBITS) / (int64_t)B);
+	return (((fixedptd)A << FIXEDPT_FBITS) / (fixedptd)B);
 }
 
 /*
@@ -109,15 +126,34 @@ fixedpt_div(fixedpt A, fixedpt B)
  * the regular integer operators + and -.
  */
 
-/* Convert the given fixedpt number to a decimal string */
+/**
+ * Convert the given fixedpt number to a decimal string.
+ * The max_dec argument specifies how many decimal digits to the right
+ * of the decimal point to generate. If set to -1, the "default" number
+ * of decimal digits will be used (2 for 32-bit fixedpt width, 10 for
+ * 64-bit fixedpt width); If set to -2, "all" of the digits will
+ * be returned, meaning there will be invalid, bogus digits outside the
+ * specified precisions.
+ */
 static inline void
-fixedpt_str(fixedpt A, char *str)
+fixedpt_str(fixedpt A, char *str, int max_dec)
 {
 	int ndec = 0, slen = 0;
 	char tmp[12] = {0};
-	uint64_t fr, ip;
-	const uint64_t one = 1LL << FIXEDPT_BITS;
-	const uint64_t mask = one - 1;
+	fixedptud fr, ip;
+	const fixedptud one = (fixedptud)1 << FIXEDPT_BITS;
+	const fixedptud mask = one - 1;
+
+	if (max_dec == -1)
+#if FIXEDPT_BITS == 32
+		max_dec = 2;
+#elif FIXEDPT_BITS == 64
+		max_dec = 10;
+#else
+#error Invalid width
+#endif
+	else if (max_dec == -2)
+		max_dec = 15;
 
 	if (A < 0) {
 		str[slen++] = '-';
@@ -140,7 +176,7 @@ fixedpt_str(fixedpt A, char *str)
 
 		str[slen++] = '0' + (fr >> FIXEDPT_BITS) % 10;
 		ndec++;
-	} while (fr != 0);
+	} while (fr != 0 && ndec < max_dec);
 
 	if (ndec > 1 && str[slen-1] == '0')
 		str[slen-1] = '\0'; /* cut off trailing 0 */
@@ -148,15 +184,14 @@ fixedpt_str(fixedpt A, char *str)
 		str[slen] = '\0';
 }
 
-
 /* Converts the given fixedpt number into a string, using a static
  * (non-threadsafe) string buffer */
 static inline char*
-fixedpt_cstr(fixedpt A)
+fixedpt_cstr(const fixedpt A, const int max_dec)
 {
-	static char str[20];
+	static char str[25];
 
-	fixedpt_str(A, str);
+	fixedpt_str(A, str, max_dec);
 	return (str);
 }
 
@@ -203,15 +238,11 @@ static inline fixedpt
 fixedpt_sin(fixedpt fp)
 {
 	int sign = 1;
-	int32_t sqr, result;
-	const int sk[2] = { 16342350, 356589659 };
-	static int SK[2] = { 0, 0 };
-
-	if (SK[0] == 0) {
-		int i;
-		for (i = 0; i < 2; i++)
-			SK[i] = sk[i] >> (31 - FIXEDPT_FBITS);
-	}
+	fixedpt sqr, result;
+	const fixedpt SK[2] = {
+		fixedpt_rconst(7.61e-03),
+		fixedpt_rconst(1.6605e-01)
+	};
 
 	fp %= 2 * FIXEDPT_PI;
 	if (fp < 0)
@@ -256,23 +287,16 @@ fixedpt_tan(fixedpt A)
 static inline fixedpt
 fixedpt_exp(fixedpt fp)
 {
-	int32_t xabs, k, z, R, xp;
-	const int ln2 = 744261117; //0.69314718055994530941723212145818 * 2^30
-	const int ln2_inv = 1549082004; //1.4426950408889634073599246810019
-	const int exp_p[5] = { 357913941, -5965232, 142029, -3550, 88 };
-	static int LN2 = 0;
-	static int LN2_INV = 0;
-	static int EXP_P[5] = { 0, 0, 0, 0, 0 };
-
-	if (LN2 == 0)
-		LN2 = ln2 >> (30 - FIXEDPT_FBITS);
-	if (LN2_INV == 0)
-		LN2_INV = ln2_inv >> (30 - FIXEDPT_FBITS);
-	if (EXP_P[0] == 0) {
-		int i;
-		for (i = 0; i < 5; i++)
-			EXP_P[i] = exp_p[i] >> (31 - FIXEDPT_FBITS);
-	}
+	fixedpt xabs, k, z, R, xp;
+	const fixedpt LN2 = fixedpt_rconst(0.69314718055994530942);
+	const fixedpt LN2_INV = fixedpt_rconst(1.4426950408889634074);
+	const fixedpt EXP_P[5] = {
+		fixedpt_rconst(1.66666666666666019037e-01),
+		fixedpt_rconst(-2.77777777770155933842e-03),
+		fixedpt_rconst(6.61375632143793436117e-05),
+		fixedpt_rconst(-1.65339022054652515390e-06),
+		fixedpt_rconst(4.13813679705723846039e-08),
+	};
 
 	if (fp == 0)
 		return (FIXEDPT_ONE);
@@ -304,18 +328,16 @@ fixedpt_ln(fixedpt x)
 {
 	fixedpt log2, xi;
 	fixedpt f, s, z, w, R;
-	const int ln2 = 744261117; //0.69314718055994530941723212145818 * 2^30
-	const int lg[7] = { 1431655765,	858993459, 613566760, 477218077, 390489238, 328862160, 317788895 };
-	static int LN2 = 0;
-	static int LG[7] = { 0, 0, 0, 0, 0, 0, 0 };
-
-	if (LN2 == 0)
-		LN2 = ln2 >> (30 - FIXEDPT_FBITS);
-	if (LG[0] == 0) {
-		int i;
-		for (i = 0; i < 7; i++)
-			LG[i] = lg[i] >> (31 - FIXEDPT_FBITS);
-	}
+	const fixedpt LN2 = fixedpt_rconst(0.69314718055994530942);
+	const fixedpt LG[7] = {
+		fixedpt_rconst(6.666666666666735130e-01),
+		fixedpt_rconst(3.999999999940941908e-01),
+		fixedpt_rconst(2.857142874366239149e-01),
+		fixedpt_rconst(2.222219843214978396e-01),
+		fixedpt_rconst(1.818357216161805012e-01),
+		fixedpt_rconst(1.531383769920937332e-01),
+		fixedpt_rconst(1.479819860511658591e-01)
+	};
 
 	if (x < 0)
 		return (0);
@@ -332,10 +354,12 @@ fixedpt_ln(fixedpt x)
 	s = fixedpt_div(f, FIXEDPT_TWO + f);
 	z = fixedpt_mul(s, s);
 	w = fixedpt_mul(z, z);
-	R = fixedpt_mul(w, LG[1] + fixedpt_mul(w, LG[3] + fixedpt_mul(w, LG[5])))
-	    + fixedpt_mul(z, LG[0] + fixedpt_mul(w, LG[2] + fixedpt_mul(w, LG[4] +
-	    fixedpt_mul(w, LG[6]))));
-	return (fixedpt_mul(LN2, (log2 << FIXEDPT_FBITS)) + f - fixedpt_mul(s, f - R));
+	R = fixedpt_mul(w, LG[1] + fixedpt_mul(w, LG[3]
+	    + fixedpt_mul(w, LG[5]))) + fixedpt_mul(z, LG[0]
+	    + fixedpt_mul(w, LG[2] + fixedpt_mul(w, LG[4]
+	    + fixedpt_mul(w, LG[6]))));
+	return (fixedpt_mul(LN2, (log2 << FIXEDPT_FBITS)) + f
+	    - fixedpt_mul(s, f - R));
 }
 	
 
