@@ -89,7 +89,6 @@ typedef	__uint128_t fixedptud;
 
 #define FIXEDPT_VCSID "$Id$"
 
-
 #define FIXEDPT_FBITS	(FIXEDPT_BITS - FIXEDPT_WBITS)
 #define FIXEDPT_FMASK	(((fixedpt)1 << FIXEDPT_FBITS) - 1)
 
