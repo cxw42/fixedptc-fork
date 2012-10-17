@@ -5,7 +5,7 @@
  * fixedptc.h is a 32-bit or 64-bit fixed point numeric library.
  *
  * The symbol FIXEDPT_BITS, if defined before this library header file
- * is included, governs the number of bits in the data type (its "width").
+ * is included, determines the number of bits in the data type (its "width").
  * The default width is 32-bit (FIXEDPT_BITS=32) and it can be used
  * on any recent C99 compiler. The 64-bit precision (FIXEDPT_BITS=64) is
  * available on compilers which implement 128-bit "long long" types. This
@@ -14,11 +14,11 @@
  * The FIXEDPT_WBITS symbols governs how many bits are dedicated to the
  * "whole" part of the number (to the left of the decimal point). The larger
  * this width is, the larger the numbers which can be stored in the fixedpt
- * number. The rest of the bits (available calculated in the FIXEDPT_FBITS
- * symbol) are dedicated to the fraction part of the number (to the right
- * of the decimal point).
+ * number. The rest of the bits (available in the FIXEDPT_FBITS symbol) are
+ * dedicated to the fraction part of the number (to the right of the decimal
+ * point).
  *
- * Since the precision in both cases is relatively low, many complex
+ * Since the number of bits in both cases is relatively low, many complex
  * functions (more complex than div & mul) take a large hit on the precision
  * of the end result because errors in precision accumulate.
  * This loss of precision can be lessened by increasing the number of
