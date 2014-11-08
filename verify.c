@@ -4,6 +4,7 @@
 #include <math.h>
 #include <locale.h>
 
+//#define FIXEDPT_WBITS 16
 #include "fixedptc.h"
 
 /* This test program verifies the fixedpt precision, comparing it to
