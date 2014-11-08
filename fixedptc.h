@@ -72,6 +72,8 @@
 #define FIXEDPT_BITS	32
 #endif
 
+#include <stdint.h>
+
 #if FIXEDPT_BITS == 32
 typedef int32_t fixedpt;
 typedef	int64_t	fixedptd;
