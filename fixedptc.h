@@ -163,7 +163,11 @@ fixedpt_str(fixedpt A, char *str, int max_dec)
 
 	if (max_dec == -1)
 #if FIXEDPT_BITS == 32
+#if FIXEDPT_WBITS > 16
 		max_dec = 2;
+#else
+		max_dec = 4;
+#endif
 #elif FIXEDPT_BITS == 64
 		max_dec = 10;
 #else
