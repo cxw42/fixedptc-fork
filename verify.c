@@ -26,6 +26,7 @@ verify_numbers()
 	printf("pi as double:\t%0.15lf\n", pi_d);
 	printf("pi as fixedpt:\t%s\n", fixedpt_cstr(pi_x, -1));
 	printf("  delta fixedpt-double:\t%0.10lf\n", atof(fixedpt_cstr(pi_x, -1)) - pi_d);
+	printf("pi as fixedpt converted to float: %0.6f\n", fixedpt_tofloat(pi_x));
 
 	printf("e as string:\t2.71828182845904523536028747\n");
 	printf("e as float:\t%0.6f\n", e_f);
