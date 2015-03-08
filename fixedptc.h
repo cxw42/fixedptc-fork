@@ -122,6 +122,11 @@ typedef	__uint128_t fixedptud;
 
 #define fixedpt_abs(A) ((A) < 0 ? -(A) : (A))
 
+/* fixedpt is meant to be usable in environments without floating point support
+ * (e.g. microcontrollers, kernels), so we can't use floating point types directly.
+ * Putting them only in macros will effectively make them optional. */
+#define fixedpt_tofloat(T) ((float) ((T)*((float)(1)/(float)(1 << FIXEDPT_FBITS))))
+
 
 /* Multiplies two fixedpt numbers, returns the result. */
 static inline fixedpt
@@ -204,6 +209,7 @@ fixedpt_str(fixedpt A, char *str, int max_dec)
 	else
 		str[slen] = '\0';
 }
+
 
 /* Converts the given fixedpt number into a string, using a static
  * (non-threadsafe) string buffer */
