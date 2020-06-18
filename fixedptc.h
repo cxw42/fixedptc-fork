@@ -42,9 +42,12 @@
  * is 3.14 here. :)
  */
 
-/*-
+/*
  * Copyright (c) 2010-2012 Ivan Voras <ivoras@freebsd.org>
  * Copyright (c) 2012 Tim Hartrick <tim@edgecast.com>
+ * Copyright (c) 2020 Damian Wrobel <dwrobel@ertelnet.rybnik.pl>
+ * Copyright (c) 2020 D3 Engineering, LLC.  Some code by
+ *   Christopher White <cwhite@d3engineering.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -67,6 +70,35 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+
+#define FIXEDPT_VCSID "$Id$"
+
+/* === Single-file vs. separate compilation ============================= */
+
+#if defined(FIXEDPTC_IMPLEMENTATION) && defined(FIXEDPTC_EXTERN)
+/* Not supported - can't combine extern and static versions of the
+ * same functions in the same C file. */
+#error "Please define at most one of FIXEDPTC_IMPLEMENTATION and FIXEDPTC_EXTERN"
+
+#elif !defined(FIXEDPTC_IMPLEMENTATION) && !defined(FIXEDPTC_EXTERN)
+/* single-file mode with inlines --- default for backward compatibility. */
+#undef FIXEDPTC__PROTOTYPES
+#define FIXEDPTC_IMPLEMENTATION
+#define FIXEDPTC__PROTO static inline
+
+#elif defined(FIXEDPTC_IMPLEMENTATION)
+/* Implementation only */
+#undef FIXEDPTC__PROTOTYPES
+#define FIXEDPTC__PROTO
+
+#else /* defined(FIXEDPTC_EXTERN) */
+/* Interface only */
+#define FIXEDPTC__PROTOTYPES
+#define FIXEDPTC__PROTO extern
+
+#endif
+
+/* === Bit sizes ======================================================== */
 
 #ifndef FIXEDPT_BITS
 #define FIXEDPT_BITS	32
@@ -96,10 +128,10 @@ typedef	__uint128_t fixedptud;
 #error "FIXEDPT_WBITS must be less than or equal to FIXEDPT_BITS"
 #endif
 
-#define FIXEDPT_VCSID "$Id$"
-
 #define FIXEDPT_FBITS	(FIXEDPT_BITS - FIXEDPT_WBITS)
 #define FIXEDPT_FMASK	(((fixedpt)1 << FIXEDPT_FBITS) - 1)
+
+/* === Interface ======================================================== */
 
 #define fixedpt_rconst(R) ((fixedpt)((R) * FIXEDPT_ONE + ((R) >= 0 ? 0.5 : -0.5)))
 #define fixedpt_fromint(I) ((fixedptd)(I) << FIXEDPT_FBITS)
@@ -127,9 +159,31 @@ typedef	__uint128_t fixedptud;
  * Putting them only in macros will effectively make them optional. */
 #define fixedpt_tofloat(T) ((float) ((T)*((float)(1)/(float)(1L << FIXEDPT_FBITS))))
 
+/* Prototypes of the functions below */
+
+#ifdef FIXEDPTC__PROTOTYPES
+
+FIXEDPTC__PROTO fixedpt fixedpt_mul(fixedpt A, fixedpt B);
+FIXEDPTC__PROTO fixedpt fixedpt_div(fixedpt A, fixedpt B);
+FIXEDPTC__PROTO void fixedpt_str(fixedpt A, char *str, int max_dec);
+FIXEDPTC__PROTO char* fixedpt_cstr(const fixedpt A, const int max_dec);
+FIXEDPTC__PROTO fixedpt fixedpt_sqrt(fixedpt A);
+FIXEDPTC__PROTO fixedpt fixedpt_sin(fixedpt fp);
+FIXEDPTC__PROTO fixedpt fixedpt_cos(fixedpt A);
+FIXEDPTC__PROTO fixedpt fixedpt_tan(fixedpt A);
+FIXEDPTC__PROTO fixedpt fixedpt_exp(fixedpt fp);
+FIXEDPTC__PROTO fixedpt fixedpt_ln(fixedpt x);
+FIXEDPTC__PROTO fixedpt fixedpt_log(fixedpt x, fixedpt base);
+FIXEDPTC__PROTO fixedpt fixedpt_pow(fixedpt n, fixedpt exp);
+
+#endif /* FIXEDPTC__PROTOTYPES */
+
+/* === Implementation =================================================== */
+
+#ifdef FIXEDPTC_IMPLEMENTATION
 
 /* Multiplies two fixedpt numbers, returns the result. */
-static inline fixedpt
+FIXEDPTC__PROTO fixedpt
 fixedpt_mul(fixedpt A, fixedpt B)
 {
 	return (((fixedptd)A * (fixedptd)B) >> FIXEDPT_FBITS);
@@ -137,7 +191,7 @@ fixedpt_mul(fixedpt A, fixedpt B)
 
 
 /* Divides two fixedpt numbers, returns the result. */
-static inline fixedpt
+FIXEDPTC__PROTO fixedpt
 fixedpt_div(fixedpt A, fixedpt B)
 {
 	return (((fixedptd)A << FIXEDPT_FBITS) / (fixedptd)B);
@@ -157,7 +211,7 @@ fixedpt_div(fixedpt A, fixedpt B)
  * be returned, meaning there will be invalid, bogus digits outside the
  * specified precisions.
  */
-static inline void
+FIXEDPTC__PROTO void
 fixedpt_str(fixedpt A, char *str, int max_dec)
 {
 	int ndec = 0, slen = 0;
@@ -213,7 +267,7 @@ fixedpt_str(fixedpt A, char *str, int max_dec)
 
 /* Converts the given fixedpt number into a string, using a static
  * (non-threadsafe) string buffer */
-static inline char*
+FIXEDPTC__PROTO char*
 fixedpt_cstr(const fixedpt A, const int max_dec)
 {
 	static char str[25];
@@ -224,7 +278,7 @@ fixedpt_cstr(const fixedpt A, const int max_dec)
 
 
 /* Returns the square root of the given number, or -1 in case of error */
-static inline fixedpt
+FIXEDPTC__PROTO fixedpt
 fixedpt_sqrt(fixedpt A)
 {
 	int invert = 0;
@@ -259,9 +313,9 @@ fixedpt_sqrt(fixedpt A)
 }
 
 
-/* Returns the sine of the given fixedpt number. 
+/* Returns the sine of the given fixedpt number.
  * Note: the loss of precision is extraordinary! */
-static inline fixedpt
+FIXEDPTC__PROTO fixedpt
 fixedpt_sin(fixedpt fp)
 {
 	int sign = 1;
@@ -274,7 +328,7 @@ fixedpt_sin(fixedpt fp)
 	fp %= 2 * FIXEDPT_PI;
 	if (fp < 0)
 		fp = FIXEDPT_PI * 2 + fp;
-	if ((fp > FIXEDPT_HALF_PI) && (fp <= FIXEDPT_PI)) 
+	if ((fp > FIXEDPT_HALF_PI) && (fp <= FIXEDPT_PI))
 		fp = FIXEDPT_PI - fp;
 	else if ((fp > FIXEDPT_PI) && (fp <= (FIXEDPT_PI + FIXEDPT_HALF_PI))) {
 		fp = fp - FIXEDPT_PI;
@@ -295,7 +349,7 @@ fixedpt_sin(fixedpt fp)
 
 
 /* Returns the cosine of the given fixedpt number */
-static inline fixedpt
+FIXEDPTC__PROTO fixedpt
 fixedpt_cos(fixedpt A)
 {
 	return (fixedpt_sin(FIXEDPT_HALF_PI - A));
@@ -303,7 +357,7 @@ fixedpt_cos(fixedpt A)
 
 
 /* Returns the tangens of the given fixedpt number */
-static inline fixedpt
+FIXEDPTC__PROTO fixedpt
 fixedpt_tan(fixedpt A)
 {
 	return fixedpt_div(fixedpt_sin(A), fixedpt_cos(A));
@@ -311,7 +365,7 @@ fixedpt_tan(fixedpt A)
 
 
 /* Returns the value exp(x), i.e. e^x of the given fixedpt number. */
-static inline fixedpt
+FIXEDPTC__PROTO fixedpt
 fixedpt_exp(fixedpt fp)
 {
 	fixedpt xabs, k, z, R, xp;
@@ -350,7 +404,7 @@ fixedpt_exp(fixedpt fp)
 
 
 /* Returns the natural logarithm of the given fixedpt number. */
-static inline fixedpt
+FIXEDPTC__PROTO fixedpt
 fixedpt_ln(fixedpt x)
 {
 	fixedpt log2, xi;
@@ -388,10 +442,10 @@ fixedpt_ln(fixedpt x)
 	return (fixedpt_mul(LN2, (log2 << FIXEDPT_FBITS)) + f
 	    - fixedpt_mul(s, f - R));
 }
-	
+
 
 /* Returns the logarithm of the given base of the given fixedpt number */
-static inline fixedpt
+FIXEDPTC__PROTO fixedpt
 fixedpt_log(fixedpt x, fixedpt base)
 {
 	return (fixedpt_div(fixedpt_ln(x), fixedpt_ln(base)));
@@ -399,7 +453,7 @@ fixedpt_log(fixedpt x, fixedpt base)
 
 
 /* Return the power value (n^exp) of the given fixedpt numbers */
-static inline fixedpt
+FIXEDPTC__PROTO fixedpt
 fixedpt_pow(fixedpt n, fixedpt exp)
 {
 	if (exp == 0)
@@ -409,4 +463,5 @@ fixedpt_pow(fixedpt n, fixedpt exp)
 	return (fixedpt_exp(fixedpt_mul(fixedpt_ln(n), exp)));
 }
 
-#endif
+#endif /* FIXEDPTC_IMPLEMENTATION */
+#endif /* _FIXEDPTC_H_ */
