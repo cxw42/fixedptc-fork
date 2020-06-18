@@ -1,4 +1,4 @@
-all: test verify_32 verify_64
+all: test test-separate verify_32 verify_64
 	true
 
 test: test.c fixedptc.h
@@ -9,3 +9,7 @@ verify_32: verify.c fixedptc.h
 
 verify_64: verify.c fixedptc.h
 	gcc -o verify_64 -O3 -Wall -DFIXEDPT_BITS=64 $(CFLAGS) $(LDFLAGS) -lm verify.c
+
+test-separate: test-separate.c test-separate-impl.c fixedptc.h
+	gcc -o test-separate -O3 -Wall $(CFLAGS) $(LDFLAGS) \
+		test-separate.c test-separate-impl.c

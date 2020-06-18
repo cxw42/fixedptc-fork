@@ -7,4 +7,18 @@ programs, thus is it implemented as a C header library. However, as
 functions in this mode of operation are all inlined, it can result in a
 significant increase in code size for the final executable. If the complex
 functions are used often in the end-program, the library should be
-refactored into a "normal" linkable object library.
+implemented in a separate C file:
+
+1. Create a new C file with the text:
+
+    #define FIXEDPTC_IMPLEMENTATION
+    #include "fixedptc.h"
+
+2. Add the new C file to be linked into your project.
+
+3. In each file that uses fixedptc.h,
+
+    #define FIXEDPTC_EXTERN
+
+   before #including fixedptc.h.
+
