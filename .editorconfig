@@ -1,0 +1,12 @@
+# See https://editorconfig.org for an explanation of this file
+
+root = true
+
+[*]
+indent_style = tab
+indent_size = 8
+end_of_line = lf
+
+[README*]
+indent_style = space
+indent_size = 4
