@@ -1,0 +1,22 @@
+# Binaries
+test
+test-separate
+verify_32
+verify_64
+
+*.exe
+*.obj
+*.o
+*.a
+
+# Temporaries
+*.swp
+*.tmp
+*~
+~*
+*\#
+
+# Backup files
+*.bak
+*.old
+*.orig
