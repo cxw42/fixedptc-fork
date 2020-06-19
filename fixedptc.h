@@ -85,6 +85,7 @@
 #undef FIXEDPTC__PROTOTYPES
 #define FIXEDPTC_IMPLEMENTATION
 #define FIXEDPTC__PROTO static inline
+#define FIXEDPTC__NO__EXPORT
 
 #elif defined(FIXEDPTC_IMPLEMENTATION)
 /* Implementation only */
@@ -95,6 +96,33 @@
 /* Interface only */
 #define FIXEDPTC__PROTOTYPES
 #define FIXEDPTC__PROTO extern
+
+#endif
+
+/* === Custom exporting ================================================= */
+
+/* If there's not already an EXPORT_SYMBOL, or if we're not exporting, create
+ * our own FIXEDPTC__EXPORT_SYMBOL as a nop so we don't have to conditionally
+ * compile the export on every function.  In addition, define a symbol that
+ * will tell us to undef our nop before leaving this file.  This should help
+ * avoid collisions.
+ */
+
+#if defined(FIXEDPTC__NO__EXPORT) || !defined(EXPORT_SYMBOL)
+#define FIXEDPTC__CLEANUP__EXPORT_SYMBOL
+#define FIXEDPTC__STRCAT(a,b) FIXEDPTC__STRCAT2(a,___,b)
+#define FIXEDPTC__STRCAT2(a,b,c) a ## b ## c
+
+/* Use a typedef for the nop because (1) it swallows a trailing semicolon;
+ * (2) it doesn't trigger "unused function" warnings; and (3) it doesn't
+ * create any symbol-table entries.
+ */
+#define FIXEDPTC__EXPORT_SYMBOL(x) typedef int FIXEDPTC__STRCAT(x,__LINE__)
+
+#else
+
+/* EXPORT_SYMBOL is defined, and we are exporting */
+#define FIXEDPTC__EXPORT_SYMBOL(x) EXPORT_SYMBOL(x)
 
 #endif
 
@@ -188,6 +216,7 @@ fixedpt_mul(fixedpt A, fixedpt B)
 {
 	return (((fixedptd)A * (fixedptd)B) >> FIXEDPT_FBITS);
 }
+FIXEDPTC__EXPORT_SYMBOL(fixedpt_mul);
 
 
 /* Divides two fixedpt numbers, returns the result. */
@@ -196,6 +225,7 @@ fixedpt_div(fixedpt A, fixedpt B)
 {
 	return (((fixedptd)A << FIXEDPT_FBITS) / (fixedptd)B);
 }
+FIXEDPTC__EXPORT_SYMBOL(fixedpt_div);
 
 /*
  * Note: adding and substracting fixedpt numbers can be done by using
@@ -263,6 +293,7 @@ fixedpt_str(fixedpt A, char *str, int max_dec)
 	else
 		str[slen] = '\0';
 }
+FIXEDPTC__EXPORT_SYMBOL(fixedpt_str);
 
 
 /* Converts the given fixedpt number into a string, using a static
@@ -275,6 +306,7 @@ fixedpt_cstr(const fixedpt A, const int max_dec)
 	fixedpt_str(A, str, max_dec);
 	return (str);
 }
+FIXEDPTC__EXPORT_SYMBOL(fixedpt_cstr);
 
 
 /* Returns the square root of the given number, or -1 in case of error */
@@ -311,6 +343,7 @@ fixedpt_sqrt(fixedpt A)
 		return (fixedpt_div(FIXEDPT_ONE, l));
 	return (l);
 }
+FIXEDPTC__EXPORT_SYMBOL(fixedpt_sqrt);
 
 
 /* Returns the sine of the given fixedpt number.
@@ -346,6 +379,7 @@ fixedpt_sin(fixedpt fp)
 	result = fixedpt_mul(result, fp);
 	return sign * result;
 }
+FIXEDPTC__EXPORT_SYMBOL(fixedpt_sin);
 
 
 /* Returns the cosine of the given fixedpt number */
@@ -354,6 +388,7 @@ fixedpt_cos(fixedpt A)
 {
 	return (fixedpt_sin(FIXEDPT_HALF_PI - A));
 }
+FIXEDPTC__EXPORT_SYMBOL(fixedpt_cos);
 
 
 /* Returns the tangens of the given fixedpt number */
@@ -362,6 +397,7 @@ fixedpt_tan(fixedpt A)
 {
 	return fixedpt_div(fixedpt_sin(A), fixedpt_cos(A));
 }
+FIXEDPTC__EXPORT_SYMBOL(fixedpt_tan);
 
 
 /* Returns the value exp(x), i.e. e^x of the given fixedpt number. */
@@ -401,6 +437,7 @@ fixedpt_exp(fixedpt fp)
 		k = FIXEDPT_ONE << (k >> FIXEDPT_FBITS);
 	return (fixedpt_mul(k, xp));
 }
+FIXEDPTC__EXPORT_SYMBOL(fixedpt_exp);
 
 
 /* Returns the natural logarithm of the given fixedpt number. */
@@ -442,6 +479,7 @@ fixedpt_ln(fixedpt x)
 	return (fixedpt_mul(LN2, (log2 << FIXEDPT_FBITS)) + f
 	    - fixedpt_mul(s, f - R));
 }
+FIXEDPTC__EXPORT_SYMBOL(fixedpt_ln);
 
 
 /* Returns the logarithm of the given base of the given fixedpt number */
@@ -450,6 +488,7 @@ fixedpt_log(fixedpt x, fixedpt base)
 {
 	return (fixedpt_div(fixedpt_ln(x), fixedpt_ln(base)));
 }
+FIXEDPTC__EXPORT_SYMBOL(fixedpt_log);
 
 
 /* Return the power value (n^exp) of the given fixedpt numbers */
@@ -462,6 +501,24 @@ fixedpt_pow(fixedpt n, fixedpt exp)
 		return 0;
 	return (fixedpt_exp(fixedpt_mul(fixedpt_ln(n), exp)));
 }
+FIXEDPTC__EXPORT_SYMBOL(fixedpt_pow);
 
 #endif /* FIXEDPTC_IMPLEMENTATION */
+
+/* === Custom exporting - cleanup ======================================= */
+
+#ifdef FIXEDPTC__CLEANUP__EXPORT_SYMBOL
+#undef FIXEDPTC__CLEANUP__EXPORT_SYMBOL
+#undef FIXEDPTC__STRCAT
+#undef FIXEDPTC__STRCAT2
+#endif /* FIXEDPTC__CLEANUP__EXPORT_SYMBOL */
+
+/* === Cleanup ========================================================== */
+
+/* Undef the internal symbols we defined above, just in case. */
+#undef FIXEDPTC__PROTOTYPES
+#undef FIXEDPTC__PROTO
+#undef FIXEDPTC__NO__EXPORT
+#undef FIXEDPTC__EXPORT_SYMBOL
+
 #endif /* _FIXEDPTC_H_ */

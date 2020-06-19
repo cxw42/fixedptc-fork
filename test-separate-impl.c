@@ -24,5 +24,8 @@
  * SUCH DAMAGE.
  */
 
+/* Example of custom EXPORT_SYMBOL:
+ * #define EXPORT_SYMBOL(x) int x ## __ = 0
+ */
 #define FIXEDPTC_IMPLEMENTATION
 #include "fixedptc.h"
