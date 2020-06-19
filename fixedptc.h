@@ -132,7 +132,11 @@
 #define FIXEDPT_BITS	32
 #endif
 
+#ifdef __KERNEL__
+#include <linux/types.h>
+#else
 #include <stdint.h>
+#endif
 
 #if FIXEDPT_BITS == 32
 typedef int32_t fixedpt;
