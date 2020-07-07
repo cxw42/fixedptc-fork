@@ -227,6 +227,8 @@ FIXEDPTC__EXPORT_SYMBOL(fixedpt_mul);
 FIXEDPTC__PROTO fixedpt
 fixedpt_div(fixedpt A, fixedpt B)
 {
+	if (B == 0)
+		return 0;
 	return (((fixedptd)A << FIXEDPT_FBITS) / (fixedptd)B);
 }
 FIXEDPTC__EXPORT_SYMBOL(fixedpt_div);
