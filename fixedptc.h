@@ -173,7 +173,7 @@ typedef	__uint128_t fixedptud;
 #define fixedpt_xmul(A,B)						\
 	((fixedpt)(((fixedptd)(A) * (fixedptd)(B)) >> FIXEDPT_FBITS))
 #define fixedpt_xdiv(A,B)						\
-	((fixedpt)(((fixedptd)(A) << FIXEDPT_FBITS) / (fixedptd)(B)))
+	((fixedptd)(((fixedptd)(A) << FIXEDPT_FBITS) / (fixedptd)(B)))
 #define fixedpt_fracpart(A) ((fixedpt)(A) & FIXEDPT_FMASK)
 
 #define FIXEDPT_ONE	((fixedpt)((fixedpt)1 << FIXEDPT_FBITS))
@@ -227,6 +227,8 @@ FIXEDPTC__EXPORT_SYMBOL(fixedpt_mul);
 FIXEDPTC__PROTO fixedpt
 fixedpt_div(fixedpt A, fixedpt B)
 {
+	if (B == 0)
+		return 0;
 	return (((fixedptd)A << FIXEDPT_FBITS) / (fixedptd)B);
 }
 FIXEDPTC__EXPORT_SYMBOL(fixedpt_div);
@@ -315,11 +317,12 @@ FIXEDPTC__EXPORT_SYMBOL(fixedpt_cstr);
 
 /* Returns the square root of the given number, or -1 in case of error */
 FIXEDPTC__PROTO fixedpt
-fixedpt_sqrt(fixedpt A)
+fixedpt_sqrt(fixedptd A)
 {
 	int invert = 0;
 	int iter = FIXEDPT_FBITS;
-	int l, i;
+	int i;
+	fixedptd l;
 
 	if (A < 0)
 		return (-1);
@@ -327,10 +330,10 @@ fixedpt_sqrt(fixedpt A)
 		return (A);
 	if (A < FIXEDPT_ONE && A > 6) {
 		invert = 1;
-		A = fixedpt_div(FIXEDPT_ONE, A);
+		A = fixedpt_xdiv(FIXEDPT_ONE, A);
 	}
 	if (A > FIXEDPT_ONE) {
-		int s = A;
+		fixedptd s = A;
 
 		iter = 0;
 		while (s > 0) {
@@ -342,9 +345,9 @@ fixedpt_sqrt(fixedpt A)
 	/* Newton's iterations */
 	l = (A >> 1) + 1;
 	for (i = 0; i < iter; i++)
-		l = (l + fixedpt_div(A, l)) >> 1;
+		l = (l + fixedpt_xdiv(A, l)) >> 1;
 	if (invert)
-		return (fixedpt_div(FIXEDPT_ONE, l));
+		return (fixedpt_xdiv(FIXEDPT_ONE, l));
 	return (l);
 }
 FIXEDPTC__EXPORT_SYMBOL(fixedpt_sqrt);
